@@ -23,6 +23,13 @@ typedef struct {
     size_t size;
 } info_t;
 
+void write_stdin(int fd);
+
+/* display option flags, lines, words, bytes */
+bool lFlag = 0;
+bool wFlag = 0;
+bool cFlag = 0;
+bool LFlag = 0;
 
 int main(int argc, char** argv)
 {
@@ -30,7 +37,6 @@ int main(int argc, char** argv)
     struct stat st;
     int option;
     int width = 0; // alignment width for displayed counts
-    int lFlag = 0, wFlag = 0, cFlag = 0, LFlag = 0; // display option flags, lines, words, bytes
     int numFiles;  // number of files to be counted
     int numFields; // number of options to be counted
     info_t *files; // count values for each file
@@ -39,7 +45,7 @@ int main(int argc, char** argv)
     size_t *size;  // pointer for cycling through sizes
     int i, j;
     bool found_error = false;
-
+    
     // check for optional arguments
     while((option = getopt(argc,argv,"lwcL")) !=-1)
 	    switch(option)
@@ -63,20 +69,17 @@ int main(int argc, char** argv)
     // remaining argument are the files to be counted
     numFiles = argc - optind;
 
-    // if no files given then currently print error message
-    // TODO: fix this, there is some issue regarding this as well
-    if(numFiles < 1)
-    {
-        printf("Usage : %s FILE [FILE...]\n",argv[0]);
-        exit(0);
-    }
-
     // if no display option was present in the command line, display every counted value
     if (!wFlag && !lFlag && !cFlag && !LFlag)
     {
         wFlag = 1;
         lFlag = 1;
         cFlag = 1;
+    }
+    
+    if (numFiles < 1)
+    {
+        write_stdin(STDIN_FILENO);
     }
 
     numFields = wFlag + lFlag + cFlag + LFlag;
@@ -229,3 +232,100 @@ int main(int argc, char** argv)
         exit(1);
 }
 
+void write_stdin(int fd)
+{
+    int line_no = 0;
+    int byte_no = 0;
+    int word_no = 0;
+    int max_length = -1;
+    int width = 0;
+    int status = 0;
+    int curr_line_char = 0;
+    size_t *sizes;
+    size_t *size;
+    char buf[10];
+    char previous[10];
+
+    previous[0]=' ';
+    struct stat st;
+
+    int Flag = lFlag + wFlag + cFlag + LFlag;
+    sizes = malloc(sizeof(size_t) * Flag);
+
+    while (read(fd,buf,1) > 0)
+    {
+        // TO DO: some of the counts in binary files are wrong
+        byte_no++;
+        // keep the count of characters per line
+        // this will reset for newline
+        curr_line_char++;
+
+        if(buf[0]=='\n')
+        {
+            line_no++;
+            // max_length will store longest line size
+            // if current line char count is greter, store it in max length
+            if(LFlag && curr_line_char > max_length)
+                max_length = curr_line_char;
+
+            // reset per line count
+            curr_line_char = 0;
+        }
+
+        if(isspace(buf[0])==0 && isspace(previous[0])!=0)
+            word_no++;
+
+        previous[0]=buf[0];
+    }
+    size = sizes;
+
+    if (lFlag) *size++ = line_no;
+    if (wFlag) *size++ = word_no;
+    if (cFlag) *size++ = byte_no;
+    if (LFlag) *size++ = max_length - 1;
+        
+	
+    if (Flag > 1)
+    {
+        width = snprintf(NULL, 0, "%d", byte_no);
+    }
+    size = sizes;
+    fstat(fd, &st);
+
+    if(S_ISDIR(st.st_mode))
+    {
+        err_msg("'standard input': Is a directory");
+        width = 7;
+        status = 1;
+    }
+
+    // display the counts    
+    if (isatty(STDIN_FILENO))
+    {
+        for (int j = 0; j < Flag; j++)
+        {
+            if (Flag == 1)
+            {
+                printf("%ld", size[j]);
+                break;
+            }
+            if (j != Flag - 1)
+                printf("%*ld ", 7, size[j]);
+            else
+                printf("%*ld", 7, size[j]);
+        }
+    }
+    else
+    {
+        for (int j = 0; j < Flag; j++)
+            if (j != Flag - 1)
+                printf("%*ld ", width, size[j]);
+            else
+                printf("%*ld", width, size[j]);
+    }	    
+    printf("\n");
+    free(sizes);
+
+    close(fd);
+    exit(status);
+}
