@@ -63,3 +63,34 @@ run_test "-w -c -l -L multiple files" -w -c -l -L $TEMEDIR/wc.c $TEMEDIR/head.c
 # binary file
 run_test "binary" $TEMEDIR/wc
 
+#test stdin without option
+run_test "stdin file" < $TEMEDIR/head.c
+
+#test for directory
+run_test "stdin directory" < ..
+
+#test stdin multiple files
+run_test "stdin multiple files" < $TEMEDIR/head.c $TEMEDIR/wc.c
+
+#test stdin with 1 opt
+run_test "stdin -l" -l < $TEMEDIR/wc.c
+run_test "stdin -w" -w < $TEMEDIR/wc.c
+run_test "stdin -c" -c < $TEMEDIR/wc.c
+run_test "stdin -L" -L < $TEMEDIR/wc.c
+
+#test stdin with 2 opt
+run_test "stdin -w -l" -w -l < $TEMEDIR/wc.c
+run_test "stdin -w -c" -w -c < $TEMEDIR/wc.c
+run_test "stdin -w -L" -w -L < $TEMEDIR/wc.c
+run_test "stdin -c -l" -c -l < $TEMEDIR/wc.c
+run_test "stdin -L -l" -L -l < $TEMEDIR/wc.c
+run_test "stdin -L -c" -L -c < $TEMEDIR/wc.c
+
+#test stdin with 3 opt
+run_test "stdin -l -w -c" -l -w -c < $TEMEDIR/wc.c
+run_test "stdin -l -w -L" -l -w -L < $TEMEDIR/wc.c
+run_test "stdin -w -c -L" -w -c -L < $TEMEDIR/wc.c
+
+#test stdin with 4 option
+run_test "stdin -w -L -l -c" -w -L -l -c < $TEMEDIR/head.c
+run_test "stdin -w -c -l -L multiple files" -w -c -l -L < $TEMEDIR/wc.c $TEMEDIR/head.c
